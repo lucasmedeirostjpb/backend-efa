@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: Polvo Eficiencia em Acao
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/tjpb-polvo

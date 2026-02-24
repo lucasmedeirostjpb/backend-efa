@@ -6,3 +6,21 @@ spring:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:8080/realms/tjpb-polvo
+          jwk-set-uri: http://localhost:8080/realms/tjpb-polvo/protocol/openid-connect/certs
+  # 1. Configuração Falsa/Temporária de Banco (Para o Spring não reclamar)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/db_polvo
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  
+  # 2. Desativando Liquibase temporariamente para o teste de segurança
+  liquibase:
+    enabled: false
+server:
+  port: 8081 # Garantindo que não bata de frente com o Keycloak na 8080 em desenvolvimento
+logging:
+  level:
+    org.springframework.security: TRACE
+    org.springframework.security.oauth2: TRACE
+    com.nimbusds: TRACE

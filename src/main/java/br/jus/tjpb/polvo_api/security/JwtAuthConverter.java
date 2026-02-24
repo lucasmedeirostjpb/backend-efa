@@ -38,16 +38,16 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
     private Collection<? extends GrantedAuthority> extractResourceRoles(Jwt jwt) {
         Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
 
-        if (resourceAccess == null || !resourceAccess.containsKey("polvo-api")) {
+        if (resourceAccess == null || !resourceAccess.containsKey("polvo-app")) {
             return Set.of();
         }
 
-        Map<String, Object> polvoApi = (Map<String, Object>) resourceAccess.get("polvo-api");
-        if (polvoApi == null || !polvoApi.containsKey("roles")) {
+        Map<String, Object> polvoApp = (Map<String, Object>) resourceAccess.get("polvo-app");
+        if (polvoApp == null || !polvoApp.containsKey("roles")) {
             return Set.of();
         }
 
-        Collection<String> roles = (Collection<String>) polvoApi.get("roles");
+        Collection<String> roles = (Collection<String>) polvoApp.get("roles");
         return roles.stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
                 .collect(Collectors.toSet());

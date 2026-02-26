@@ -3,6 +3,7 @@ package br.jus.tjpb.polvo_api.security;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -31,6 +32,9 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/metas/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/metas/**").hasRole("COORDENADOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/metas/**").hasRole("COORDENADOR")
                         .requestMatchers("/api/gestao/**").hasRole("COORDENADOR")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

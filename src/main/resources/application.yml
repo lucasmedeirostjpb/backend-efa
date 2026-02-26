@@ -14,9 +14,15 @@ spring:
     password: postgres
     driver-class-name: org.postgresql.Driver
   
-  # 2. Desativando Liquibase temporariamente para o teste de segurança
+  # 2. Liquibase habilitado para gerenciar o schema do banco
   liquibase:
-    enabled: false
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.sql
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
 server:
   port: 8081 # Garantindo que não bata de frente com o Keycloak na 8080 em desenvolvimento
 logging:

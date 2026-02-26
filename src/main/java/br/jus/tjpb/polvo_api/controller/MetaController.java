@@ -2,7 +2,12 @@ package br.jus.tjpb.polvo_api.controller;
 
 import br.jus.tjpb.polvo_api.model.Meta;
 import br.jus.tjpb.polvo_api.repository.MetaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,8 +15,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/metas")
@@ -24,8 +27,9 @@ public class MetaController {
     }
 
     @GetMapping
-    public List<Meta> listarTodas() {
-        return metaRepository.findAll();
+    public Page<Meta> listarTodas(
+            @PageableDefault(size = 20, sort = "dataCriacao", direction = Sort.Direction.DESC) Pageable pageable) {
+        return metaRepository.findAll(pageable);
     }
 
     @GetMapping("/{id}")
@@ -50,5 +54,14 @@ public class MetaController {
                     return ResponseEntity.ok(metaRepository.save(meta));
                 })
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletar(@PathVariable Long id) {
+        if (!metaRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        metaRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }

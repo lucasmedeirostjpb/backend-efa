@@ -35,6 +35,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/metas/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/metas/**").hasRole("COORDENADOR")
                         .requestMatchers(HttpMethod.PUT, "/api/metas/**").hasRole("COORDENADOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/metas/**").hasRole("COORDENADOR")
                         .requestMatchers("/api/gestao/**").hasRole("COORDENADOR")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

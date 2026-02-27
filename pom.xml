@@ -92,6 +92,11 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.javers</groupId>
+			<artifactId>javers-spring-boot-starter-sql</artifactId>
+			<version>7.10.0</version>
+		</dependency>
 	</dependencies>
 
 	<build>

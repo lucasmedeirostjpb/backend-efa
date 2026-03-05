@@ -1,4 +1,4 @@
-package br.jus.tjpb.polvo_api.dto;
+package br.jus.tjpb.polvo_api.shared.dto;
 
 public class PropriedadeAlteradaDTO {
     private String propriedade;

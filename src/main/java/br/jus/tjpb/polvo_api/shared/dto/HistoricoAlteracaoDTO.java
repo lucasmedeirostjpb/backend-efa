@@ -1,4 +1,4 @@
-package br.jus.tjpb.polvo_api.dto;
+package br.jus.tjpb.polvo_api.shared.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;

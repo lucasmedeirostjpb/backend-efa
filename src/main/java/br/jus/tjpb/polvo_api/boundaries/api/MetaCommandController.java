@@ -1,13 +1,17 @@
 package br.jus.tjpb.polvo_api.boundaries.api;
 
 import br.jus.tjpb.polvo_api.application.meta.command.*;
+import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaRequestDTO;
+import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaResponseDTO;
 import br.jus.tjpb.polvo_api.config.security.AppUserResolver;
-import br.jus.tjpb.polvo_api.domain.Meta;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/metas")
+@PreAuthorize("hasRole('COORDENADOR')")
 public class MetaCommandController {
 
     private final CreateMetaCommandHandler createHandler;
@@ -26,20 +30,17 @@ public class MetaCommandController {
     }
 
     @PostMapping
-    public ResponseEntity<Meta> criar(@RequestBody Meta meta) {
-        var command = new CreateMetaCommand(appUserResolver.resolveCurrentUser(), meta.getTitulo(),
-                meta.getDescricao());
+    public ResponseEntity<MetaResponseDTO> criar(@Valid @RequestBody MetaRequestDTO dto) {
+        var command = new CreateMetaCommand(appUserResolver.resolveCurrentUser(), dto);
         return ResponseEntity.ok(createHandler.handle(command));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Meta> atualizar(@PathVariable Long id, @RequestBody Meta metaAtualizada) {
+    public ResponseEntity<MetaResponseDTO> atualizar(@PathVariable Long id, @Valid @RequestBody MetaRequestDTO dto) {
         var command = new UpdateMetaCommand(
                 appUserResolver.resolveCurrentUser(),
                 id,
-                metaAtualizada.getTitulo(),
-                metaAtualizada.getDescricao(),
-                metaAtualizada.getConcluida());
+                dto);
         return ResponseEntity.ok(updateHandler.handle(command));
     }
 

@@ -31,12 +31,13 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/api/public/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/metas/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/metas/**").hasRole("COORDENADOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/metas/**").hasRole("COORDENADOR")
-                        .requestMatchers(HttpMethod.DELETE, "/api/metas/**").hasRole("COORDENADOR")
-                        .requestMatchers("/api/gestao/**").hasRole("COORDENADOR")
+                        .requestMatchers(HttpMethod.POST, "/api/metas/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/metas/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/metas/**").permitAll()
+                        .requestMatchers("/api/gestao/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt

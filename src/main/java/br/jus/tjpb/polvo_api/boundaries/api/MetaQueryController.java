@@ -1,5 +1,7 @@
 package br.jus.tjpb.polvo_api.boundaries.api;
 
+import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaResponseDTO;
+import br.jus.tjpb.polvo_api.boundaries.api.mapper.MetaMapper;
 import br.jus.tjpb.polvo_api.domain.Meta;
 import br.jus.tjpb.polvo_api.domain.MetaRepository;
 import br.jus.tjpb.polvo_api.shared.dto.HistoricoAlteracaoDTO;
@@ -16,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -25,25 +28,29 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/metas")
+@Transactional(readOnly = true)
 public class MetaQueryController {
 
     private final MetaRepository metaRepository;
+    private final MetaMapper metaMapper;
     private final Javers javers;
 
-    public MetaQueryController(MetaRepository metaRepository, Javers javers) {
+    public MetaQueryController(MetaRepository metaRepository, MetaMapper metaMapper, Javers javers) {
         this.metaRepository = metaRepository;
+        this.metaMapper = metaMapper;
         this.javers = javers;
     }
 
     @GetMapping
-    public Page<Meta> listarTodas(
-            @PageableDefault(size = 20, sort = "dataCriacao", direction = Sort.Direction.DESC) @org.springframework.lang.NonNull Pageable pageable) {
-        return metaRepository.findAll(pageable);
+    public Page<MetaResponseDTO> listarTodas(
+            @PageableDefault(size = 20, sort = "titulo", direction = Sort.Direction.ASC) @org.springframework.lang.NonNull Pageable pageable) {
+        return metaRepository.findAll(pageable).map(metaMapper::toDTO);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Meta> buscarPorId(@PathVariable @org.springframework.lang.NonNull Long id) {
+    public ResponseEntity<MetaResponseDTO> buscarPorId(@PathVariable @org.springframework.lang.NonNull Long id) {
         return metaRepository.findById(id)
+                .map(metaMapper::toDTO)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }

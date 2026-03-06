@@ -1,23 +1,18 @@
 package br.jus.tjpb.polvo_api.application.meta.command;
 
+import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaRequestDTO;
 import br.jus.tjpb.polvo_api.config.command.AbstractCommand;
 import br.jus.tjpb.polvo_api.config.security.AppUser;
 
 public class CreateMetaCommand extends AbstractCommand {
-    private final String titulo;
-    private final String descricao;
+    private final MetaRequestDTO dto;
 
-    public CreateMetaCommand(AppUser user, String titulo, String descricao) {
+    public CreateMetaCommand(AppUser user, MetaRequestDTO dto) {
         super(user);
-        this.titulo = titulo;
-        this.descricao = descricao;
+        this.dto = dto;
     }
 
-    public String getTitulo() {
-        return titulo;
-    }
-
-    public String getDescricao() {
-        return descricao;
+    public MetaRequestDTO getDto() {
+        return dto;
     }
 }

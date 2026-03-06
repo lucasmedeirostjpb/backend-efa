@@ -24,6 +24,7 @@ public class JpaConfig {
         return new AuditorAware<String>() {
             @Override
             @org.springframework.lang.NonNull
+            @SuppressWarnings("null")
             public Optional<String> getCurrentAuditor() {
                 AppUser user = appUserResolver.resolveCurrentUser();
                 if (user == null) {

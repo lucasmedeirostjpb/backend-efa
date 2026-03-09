@@ -1,6 +1,7 @@
 package br.jus.tjpb.polvo_api.boundaries.api.dto;
 
 import br.jus.tjpb.polvo_api.domain.StatusMeta;
+import br.jus.tjpb.polvo_api.domain.NivelDificuldade;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -35,6 +36,12 @@ public class MetaRequestDTO {
 
     @NotNull(message = "O status é obrigatório.")
     private StatusMeta status;
+
+    private NivelDificuldade nivelDificuldade;
+
+    private String evidenciasAuditoria;
+
+    private String observacoes;
 
     @NotNull(message = "O percentual máximo é obrigatório.")
     @PositiveOrZero(message = "O percentual máximo deve ser maior ou igual a zero.")

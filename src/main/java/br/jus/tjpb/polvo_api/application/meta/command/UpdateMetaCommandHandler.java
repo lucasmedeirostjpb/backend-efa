@@ -45,6 +45,7 @@ public class UpdateMetaCommandHandler {
         }
 
         sanitizarValoresMatematicos(meta);
+        validarRegrasAuditoria(meta);
 
         Meta savedMeta = metaRepository.save(meta);
         return metaMapper.toDTO(savedMeta);
@@ -73,6 +74,19 @@ public class UpdateMetaCommandHandler {
                 break;
             default:
                 break;
+        }
+    }
+
+    private void validarRegrasAuditoria(Meta meta) {
+        if (meta.getStatus() == br.jus.tjpb.polvo_api.domain.StatusMeta.TOTALMENTE_CUMPRIDA ||
+                meta.getStatus() == br.jus.tjpb.polvo_api.domain.StatusMeta.PARCIALMENTE_CUMPRIDA ||
+                meta.getStatus() == br.jus.tjpb.polvo_api.domain.StatusMeta.NAO_CUMPRIDA) {
+
+            String evidencias = meta.getEvidenciasAuditoria();
+            if (evidencias == null || evidencias.trim().isEmpty() || evidencias.trim().length() < 20) {
+                throw new IllegalArgumentException(
+                        "Para metas em fase de conclusão, é obrigatório fornecer pelo menos 20 caracteres de evidências para auditoria.");
+            }
         }
     }
 }

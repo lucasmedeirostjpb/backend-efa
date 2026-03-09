@@ -7,6 +7,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -38,6 +39,15 @@ public class Meta extends DomainEntityAuditableUpdate {
 
     @Enumerated(EnumType.STRING)
     private StatusMeta status = StatusMeta.PENDENTE;
+
+    @Enumerated(EnumType.STRING)
+    private NivelDificuldade nivelDificuldade = NivelDificuldade.SEM_DIFICULDADES;
+
+    @Column(columnDefinition = "TEXT")
+    private String evidenciasAuditoria;
+
+    @Column(columnDefinition = "TEXT")
+    private String observacoes;
 
     private BigDecimal pMaximo;
     private BigDecimal estimativaReal;

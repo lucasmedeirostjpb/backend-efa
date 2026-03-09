@@ -9,7 +9,8 @@ import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE, imports = {
         br.jus.tjpb.polvo_api.domain.EixoTematico.class,
-        br.jus.tjpb.polvo_api.domain.Setor.class
+        br.jus.tjpb.polvo_api.domain.Setor.class,
+        br.jus.tjpb.polvo_api.domain.NivelDificuldade.class
 })
 public interface MetaMapper {
 

@@ -1,6 +1,7 @@
 package br.jus.tjpb.polvo_api.boundaries.api.dto;
 
 import br.jus.tjpb.polvo_api.domain.StatusMeta;
+import br.jus.tjpb.polvo_api.domain.NivelDificuldade;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -26,6 +27,9 @@ public class MetaResponseDTO {
     private LocalDate deadline;
 
     private StatusMeta status;
+    private NivelDificuldade nivelDificuldade;
+    private String evidenciasAuditoria;
+    private String observacoes;
 
     @com.fasterxml.jackson.annotation.JsonProperty("pMaximo")
     private BigDecimal pMaximo;

@@ -14,13 +14,15 @@ Recém-refatorada para adotar as melhores práticas arquiteturais estabelecidas 
   - [🛠 Stack Tecnológica](#-stack-tecnológica)
   - [🏗 Arquitetura](#-arquitetura)
   - [🗃 Modelo de Dados](#-modelo-de-dados)
-    - [Tabela `metas`](#tabela-metas)
+    - [Tabela `efa_metas`](#tabela-efa_metas)
   - [🔌 Endpoints da API](#-endpoints-da-api)
     - [Leitura (Queries) - `MetaQueryController`](#leitura-queries---metaquerycontroller)
     - [Escrita (Commands) - `MetaCommandController`](#escrita-commands---metacommandcontroller)
+    - [Dashboards e KPIs - `KpiQueryController`](#dashboards-e-kpis---kpiquerycontroller)
   - [🔐 Segurança e Autenticação](#-segurança-e-autenticação)
     - [Regras de Acesso](#regras-de-acesso)
-  - [📜 Auditoria e Histórico](#-auditoria-e-histórico)
+  - [⚖️ Regras de Negócio e Auditoria](#️-regras-de-negócio-e-auditoria)
+  - [📜 Histórico de Alterações](#-histórico-de-alterações)
   - [⚙ Configuração e Execução](#-configuração-e-execução)
     - [Pré-requisitos](#pré-requisitos)
     - [Executando a API](#executando-a-api)
@@ -32,128 +34,130 @@ Recém-refatorada para adotar as melhores práticas arquiteturais estabelecidas 
 
 | Tecnologia          | Versão / Detalhes                          |
 | ------------------- | ------------------------------------------ |
-| Java                | 21                                         |
+| Java                | 21 (LTS)                                   |
 | Spring Boot         | 3.2.x                                      |
-| Spring Security     | OAuth2 Resource Server                     |
-| Spring Data JPA     | Hibernate (modo `validate`)                |
-| Banco de Dados      | PostgreSQL                                 |
+| Spring Security     | OAuth2 Resource Server (JWT)               |
+| Spring Data JPA     | Hibernate (PostgreSQL)                     |
 | Migração de Schema  | Liquibase                                  |
 | Autenticação        | Keycloak (realm `tjpb-polvo`)              |
 | Auditoria de Dados  | JaVers                                     |
-| Utilitários         | Lombok, TSID (Identificadores Únicos)      |
-| Build               | Maven                                      |
+| Mapeamento DTOs     | MapStruct                                  |
+| Utilitários         | Lombok, TSID (Identificadores Ordenáveis)  |
+| Build               | Maven (mvnw)                               |
 
 ---
 
 ## 🏗 Arquitetura
 
-O projeto foi reestruturado para seguir o padrão **DDD** (Domain-Driven Design) combinado com **Arquitetura Hexagonal (Ports & Adapters)** e **CQRS** (Command Query Responsibility Segregation).
+O projeto segue os padrões de excelência técnica do TJPB:
+- **DDD (Domain-Driven Design):** Foco total no domínio e regras de negócio.
+- **Arquitetura Hexagonal:** Isolamento do core de dependências externas.
+- **CQRS (Command Query Responsibility Segregation):** Separação clara entre leitura e escrita.
 
+### Estrutura de Pacotes:
 ```
 br.jus.tjpb.polvo_api
-├── application/             # Casos de uso e comandos (Handlers)
-│   └── meta/command/        # Handlers de Create, Update, Delete de Metas
-├── boundaries/              # Adaptadores de entrada (Controllers REST)
-│   └── api/                 # Endpoints segregados (MetaQueryController e MetaCommandController)
-├── config/                  # Configurações globais (Segurança, JPA, JaVers, JSON, Tratamento de Erros)
-├── domain/                  # Entidades de Domínio, Repositórios e Regras de Negócio (ex: Meta, DomainEntity)
-├── infra/                   # Implementações de infraestrutura e integrações
-└── shared/                  # Classes utilitárias e DTOs (Data Transfer Objects) compartilhados
+├── application/             # Casos de Uso e Comandos (Handlers)
+├── boundaries/              # Adaptadores de Entrada (Controllers, DTOs, Mappers)
+├── config/                  # Configurações do Framework (Security, JPA, JaVers)
+├── domain/                  # Entidades, Enums e Repositórios (Core)
+├── infra/                   # Implementações Técnicas e Adaptadores de Saída
+└── shared/                  # Código compartilhado entre camadas
 ```
 
 ---
 
 ## 🗃 Modelo de Dados
 
-### Tabela `metas`
+### Tabela `efa_metas`
 
-A entidade de domínio agora herda de classes bases (`DomainEntityAuditableCreate`, `DomainEntityAuditableUpdate`) que garantem campos padronizados:
+As metas possuem campos ricos para gestão, auditoria e governança:
 
-| Coluna                  | Tipo              | Restrições                       |
-| ----------------------- | ----------------- | -------------------------------- |
-| `id`                    | `BIGINT`          | **PK**, gerado via **TSID**     |
-| `titulo`                | `VARCHAR(255)`    | `NOT NULL`                       |
-| `descricao`             | `TEXT`            | Opcional                         |
-| `concluida`             | `BOOLEAN`         | Default `FALSE`                  |
-| `data_criacao`          | `TIMESTAMP`       | Default `CURRENT_TIMESTAMP`      |
-| `usuario_criacao_id`    | `VARCHAR(255)`    | Identificador do criador         |
-| `usuario_criacao_nome`  | `VARCHAR(255)`    | Nome do criador                  |
-| `data_atualizacao`      | `TIMESTAMP`       | Data da última atualização       |
-| `usuario_atualizacao_id`| `VARCHAR(255)`    | Identificador do modificador     |
-| `usuario_atualizacao_nome`| `VARCHAR(255)`  | Nome do modificador              |
-
-O schema é gerenciado pelo **Liquibase** via `db/changelog/db.changelog-master.sql`.
+| Coluna | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `id` | `BIGINT` | PK (Time-sortable ID - TSID) |
+| `titulo` | `VARCHAR` | Nome da meta |
+| `descricao` | `TEXT` | Detalhamento da meta |
+| `status` | `VARCHAR` | Status atual (PENDENTE, EM_ANDAMENTO, etc) |
+| `nivel_dificuldade`| `VARCHAR` | Nível de execução (SEM_DIFICULDADES, EM_ALERTA, CRITICA) |
+| `evidencias_auditoria`| `TEXT` | Evidências para comprovação do cumprimento |
+| `observacoes` | `TEXT` | Notas adicionais de governança |
+| `p_maximo` | `DECIMAL` | Percentual/Pontuação máxima aplicável |
+| `pontos_atingidos` | `DECIMAL` | Pontuação efetivamente alcançada |
 
 ---
 
 ## 🔌 Endpoints da API
 
-A API foi segregada aplicando o padrão CQRS, separando operações de leitura (*Query*) e escrita (*Command*).
-A API roda por padrão na porta **8081** (`http://localhost:8081`).
+A API roda por padrão na porta **8081**.
 
 ### Leitura (Queries) - `MetaQueryController`
 
-| Método | Rota                          | Descrição                          | Acesso                   |
-| ------ | ----------------------------- | ---------------------------------- | ------------------------ |
-| `GET`  | `/api/metas`                  | Listar todas as metas              | 🌐 **Público**          |
-| `GET`  | `/api/metas/{id}`             | Buscar meta por TSID                | 🌐 **Público**          |
-| `GET`  | `/api/metas/{id}/historico`   | Visualizar o histórico de mudanças| 🌐 **Público**          |
+| Método | Rota | Função | Acesso |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/metas` | Listagem paginada de metas | 🌐 Público |
+| `GET` | `/api/metas/{id}` | Detalhes de uma meta específica | 🌐 Público |
+| `GET` | `/api/metas/{id}/historico`| Linha do tempo de alterações (JaVers) | 🌐 Público |
 
 ### Escrita (Commands) - `MetaCommandController`
 
-| Método | Rota                          | Descrição                          | Acesso                   |
-| ------ | ----------------------------- | ---------------------------------- | ------------------------ |
-| `POST` | `/api/metas`                  | Criar uma nova meta                | 🔒 Role `COORDENADOR`   |
-| `PUT`  | `/api/metas/{id}`             | Atualizar uma meta por TSID         | 🔒 Role `COORDENADOR`   |
-| `DELETE`| `/api/metas/{id}`            | Excluir uma meta                   | 🔒 Role `COORDENADOR`   |
+| Método | Rota | Função | Acesso |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/metas` | Criar nova meta | 🔒 COORDENADOR |
+| `PUT` | `/api/metas/{id}` | Atualizar dados da meta | 🔒 COORDENADOR |
+| `DELETE`| `/api/metas/{id}` | Remover meta do sistema | 🔒 COORDENADOR |
 
-*(Payloads e respostas seguem o mesmo padrão definido anteriormente, com o bônus de detalhamentos mais complexos nos casos de erro tratáveis pelo AppControllerAdvice).*
+### Dashboards e KPIs - `KpiQueryController`
+
+| Método | Rota | Função | Acesso |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/kpis/dashboard` | Resumo estatístico (Total, Pontos, Tração) | 🔒 Autenticado |
 
 ---
 
 ## 🔐 Segurança e Autenticação
 
-A API continua utilizando **Spring Security** (OAuth2 Resource Server) integrado ao **Keycloak**. A classe `AppUserResolver` permite em toda aplicação resgatar com facilidade os detalhes do usuário baseando-se no JWT autenticado, garantindo rastreabilidade do autor das operações de *Command*.
-
-### Regras de Acesso
-
-```
-/api/public/**                     →  Acesso livre (permitAll)
-GET /api/metas/**                  →  Acesso livre (permitAll)
-POST, PUT, DELETE /api/metas/**    →  Role COORDENADOR
-Demais rotas                       →  Autenticado (qualquer usuário válido)
-```
+Integração nativa com **Keycloak**. 
+- **Público:** Visualização de metas e histórico.
+- **Autenticado:** Acesso a dashboards.
+- **Role `COORDENADOR`:** Permissão total para CRUD de metas.
 
 ---
 
-## 📜 Auditoria e Histórico
+## ⚖️ Regras de Negócio e Auditoria
 
-A API faz uso intenso do **JaVers** combinado customizações de arquitetura (via `CommandsLogger` interceptors). Sempre que uma meta é criada, editada ou excluída, o sistema audita quem foi o responsável (baseado no token do Keycloak) e quais propriedades foram alteradas. O endpoint `GET /api/metas/{id}/historico` serve como consulta a esta timeline de alterações.
+### Validação de Conclusão:
+Para garantir a integridade dos dados, metas marcadas como **TOTALMENTE_CUMPRIDA**, **PARCIALMENTE_CUMPRIDA** ou **NAO_CUMPRIDA** possuem validação obrigatória:
+- O campo `evidencias_auditoria` deve conter no mínimo **20 caracteres**.
+- Caso contrário, a operação é bloqueada com erro de negócio.
+
+### Sanitização Matemática:
+O sistema limpa automaticamente campos de estimativa quando a meta sai do estado "EM_ANDAMENTO" e calcula os pontos atingidos automaticamente em casos de 100% de cumprimento.
+
+---
+
+## 📜 Histórico de Alterações
+
+Utilizamos o **JaVers** para manter um log completo de auditoria. Todas as mudanças de valores, campos alterados, quem alterou e quando alterou ficam registradas e acessíveis via endpoint de histórico, garantindo 100% de transparência na governança.
 
 ---
 
 ## ⚙ Configuração e Execução
 
 ### Pré-requisitos
-
-- **Java 21**
-- **PostgreSQL** rodando em `localhost:5432` com banco `db_polvo`
-- **Keycloak** rodando em `localhost:8080` com realm `tjpb-polvo` configurado
+- **Java 21 (LTS)**
+- **PostgreSQL 15+** (Base: `db_polvo`)
+- **Keycloak** (Realm: `tjpb-polvo`)
 
 ### Executando a API
-
 ```bash
-# Via Maven Wrapper
+# Iniciar via Maven
 ./mvnw spring-boot:run
-
-# Ou via script batch (Windows)
-start_project.bat
 ```
-
-A API ficará disponível em `http://localhost:8081`.
 
 ---
 
 ## 📄 Licença
 
-Projeto interno do **Tribunal de Justiça da Paraíba (TJPB)**.
+Uso exclusivo do **Tribunal de Justiça da Paraíba (TJPB)**.
+Diretoria de Tecnologia da Informação.

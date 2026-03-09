@@ -104,6 +104,7 @@ A API roda por padrão na porta **8081**.
 | Método | Rota | Função | Acesso |
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/metas` | Criar nova meta | 🔒 COORDENADOR |
+| `POST` | `/api/metas/batch` | Criar metas em lote | 🔒 COORDENADOR |
 | `PUT` | `/api/metas/{id}` | Atualizar dados da meta | 🔒 COORDENADOR |
 | `DELETE`| `/api/metas/{id}` | Remover meta do sistema | 🔒 COORDENADOR |
 
@@ -133,6 +134,11 @@ Para garantir a integridade dos dados, metas marcadas como **TOTALMENTE_CUMPRIDA
 
 ### Sanitização Matemática:
 O sistema limpa automaticamente campos de estimativa quando a meta sai do estado "EM_ANDAMENTO" e calcula os pontos atingidos automaticamente em casos de 100% de cumprimento.
+
+### Robustez na Importação:
+Para facilitar a carga via planilhas legadas, o sistema adota as seguintes regras silentes:
+- **Resolução de Nomes:** Caso não seja enviado um ID, o sistema busca e cria automaticamente **Eixos Temáticos** e **Setores** com base nos nomes fornecidos.
+- **Deadline Padrão:** Se o prazo (`deadline`) for nulo ou inválido (ex: `-`), o sistema define automaticamente como **31/12** do ano do ciclo informado.
 
 ---
 

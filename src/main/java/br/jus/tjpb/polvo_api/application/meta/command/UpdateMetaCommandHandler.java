@@ -2,10 +2,7 @@ package br.jus.tjpb.polvo_api.application.meta.command;
 
 import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaResponseDTO;
 import br.jus.tjpb.polvo_api.boundaries.api.mapper.MetaMapper;
-import br.jus.tjpb.polvo_api.domain.Meta;
-import br.jus.tjpb.polvo_api.domain.MetaRepository;
-import br.jus.tjpb.polvo_api.domain.EixoTematicoRepository;
-import br.jus.tjpb.polvo_api.domain.SetorRepository;
+import br.jus.tjpb.polvo_api.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,15 +30,29 @@ public class UpdateMetaCommandHandler {
         Meta meta = metaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Meta não encontrada"));
 
-        metaMapper.updateEntityFromDTO(command.getDto(), meta);
+        var dto = command.getDto();
+        metaMapper.updateEntityFromDTO(dto, meta);
 
-        if (command.getDto().getEixoId() != null) {
-            meta.setEixo(eixoTematicoRepository
-                    .getReferenceById(java.util.Objects.requireNonNull(command.getDto().getEixoId())));
+        // Resolução de Eixo
+        if (dto.getEixoId() != null) {
+            meta.setEixo(eixoTematicoRepository.getReferenceById(dto.getEixoId()));
+        } else if (dto.getEixoNome() != null && !dto.getEixoNome().isBlank()) {
+            EixoTematico eixo = eixoTematicoRepository.findByNome(dto.getEixoNome().trim())
+                    .orElseGet(() -> eixoTematicoRepository.save(new EixoTematico(dto.getEixoNome().trim())));
+            meta.setEixo(eixo);
         }
-        if (command.getDto().getSetorId() != null) {
-            meta.setSetor(
-                    setorRepository.getReferenceById(java.util.Objects.requireNonNull(command.getDto().getSetorId())));
+
+        // Resolução de Setor
+        if (dto.getSetorId() != null) {
+            meta.setSetor(setorRepository.getReferenceById(dto.getSetorId()));
+        } else if (dto.getSetorNome() != null && !dto.getSetorNome().isBlank()) {
+            String nome = dto.getSetorNome().trim();
+            Setor setor = setorRepository.findByNome(nome)
+                    .orElseGet(() -> {
+                        String sigla = nome.length() > 50 ? nome.substring(0, 50) : nome;
+                        return setorRepository.save(new Setor(sigla, nome));
+                    });
+            meta.setSetor(setor);
         }
 
         sanitizarValoresMatematicos(meta);

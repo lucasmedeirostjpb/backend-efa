@@ -15,15 +15,18 @@ import jakarta.validation.Valid;
 public class MetaCommandController {
 
     private final CreateMetaCommandHandler createHandler;
+    private final CreateMetaBatchCommandHandler batchHandler;
     private final UpdateMetaCommandHandler updateHandler;
     private final DeleteMetaCommandHandler deleteHandler;
     private final AppUserResolver appUserResolver;
 
     public MetaCommandController(CreateMetaCommandHandler createHandler,
+            CreateMetaBatchCommandHandler batchHandler,
             UpdateMetaCommandHandler updateHandler,
             DeleteMetaCommandHandler deleteHandler,
             AppUserResolver appUserResolver) {
         this.createHandler = createHandler;
+        this.batchHandler = batchHandler;
         this.updateHandler = updateHandler;
         this.deleteHandler = deleteHandler;
         this.appUserResolver = appUserResolver;
@@ -33,6 +36,13 @@ public class MetaCommandController {
     public ResponseEntity<MetaResponseDTO> criar(@Valid @RequestBody MetaRequestDTO dto) {
         var command = new CreateMetaCommand(appUserResolver.resolveCurrentUser(), dto);
         return ResponseEntity.ok(createHandler.handle(command));
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<java.util.List<MetaResponseDTO>> criarBatch(
+            @Valid @RequestBody java.util.List<MetaRequestDTO> dtos) {
+        var command = new CreateMetaBatchCommand(appUserResolver.resolveCurrentUser(), dtos);
+        return ResponseEntity.ok(batchHandler.handle(command));
     }
 
     @PutMapping("/{id}")

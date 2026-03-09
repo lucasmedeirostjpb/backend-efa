@@ -20,18 +20,19 @@ public class MetaRequestDTO {
 
     private String descricao;
 
-    @NotNull(message = "O Eixo Temático é obrigatório.")
     private Long eixoId;
 
-    @NotNull(message = "O Setor é obrigatório.")
     private Long setorId;
+
+    private String eixoNome;
+
+    private String setorNome;
 
     private String artigo;
 
     @NotNull(message = "O ano do ciclo é obrigatório.")
     private Integer anoCiclo;
 
-    @NotNull(message = "O deadline é obrigatório.")
     private LocalDate deadline;
 
     @NotNull(message = "O status é obrigatório.")

@@ -47,6 +47,14 @@ public class MetaQueryController {
         return metaRepository.findAll(pageable).map(metaMapper::toDTO);
     }
 
+    @GetMapping("/all")
+    public List<MetaResponseDTO> listarTodasSemPaginacao() {
+        return metaRepository.findAll(Sort.by(Sort.Direction.ASC, "setor.sigla", "titulo"))
+                .stream()
+                .map(metaMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<MetaResponseDTO> buscarPorId(@PathVariable @org.springframework.lang.NonNull Long id) {
         return metaRepository.findById(id)

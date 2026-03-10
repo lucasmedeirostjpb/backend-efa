@@ -58,6 +58,7 @@ class CreateMetaCommandHandlerTest {
         meta.setTetoEstimado(new BigDecimal("50"));
         meta.setEstimativaReal(new BigDecimal("40"));
         meta.setPontosAtingidos(new BigDecimal("10"));
+        meta.setEvidenciasAuditoria("Evidência de auditoria válida com mais de vinte caracteres.");
 
         when(metaMapper.toEntity(dto)).thenReturn(meta);
         when(eixoTematicoRepository.getReferenceById(1L)).thenReturn(new EixoTematico());

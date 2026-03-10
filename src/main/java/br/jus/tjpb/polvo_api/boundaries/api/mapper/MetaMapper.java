@@ -16,6 +16,7 @@ public interface MetaMapper {
 
     @Mapping(target = "eixo", ignore = true)
     @Mapping(target = "setor", ignore = true)
+    @Mapping(target = "coordenador", ignore = true)
     Meta toEntity(MetaRequestDTO dto);
 
     @Mapping(target = "eixoId", source = "eixo.id")
@@ -23,10 +24,13 @@ public interface MetaMapper {
     @Mapping(target = "setorId", source = "setor.id")
     @Mapping(target = "setorSigla", source = "setor.sigla")
     @Mapping(target = "setorNome", source = "setor.nome")
+    @Mapping(target = "coordenadorId", source = "coordenador.id")
+    @Mapping(target = "coordenadorNome", source = "coordenador.nome")
     MetaResponseDTO toDTO(Meta entity);
 
     @Mapping(target = "eixo", ignore = true)
     @Mapping(target = "setor", ignore = true)
+    @Mapping(target = "coordenador", ignore = true)
     @Mapping(target = "id", ignore = true)
     void updateEntityFromDTO(MetaRequestDTO dto, @org.mapstruct.MappingTarget Meta entity);
 }

@@ -11,15 +11,18 @@ public class UpdateMetaCommandHandler {
     private final MetaRepository metaRepository;
     private final EixoTematicoRepository eixoTematicoRepository;
     private final SetorRepository setorRepository;
+    private final CoordenadorRepository coordenadorRepository;
     private final MetaMapper metaMapper;
 
     public UpdateMetaCommandHandler(MetaRepository metaRepository,
             EixoTematicoRepository eixoTematicoRepository,
             SetorRepository setorRepository,
+            CoordenadorRepository coordenadorRepository,
             MetaMapper metaMapper) {
         this.metaRepository = metaRepository;
         this.eixoTematicoRepository = eixoTematicoRepository;
         this.setorRepository = setorRepository;
+        this.coordenadorRepository = coordenadorRepository;
         this.metaMapper = metaMapper;
     }
 
@@ -53,6 +56,16 @@ public class UpdateMetaCommandHandler {
                         return setorRepository.save(new Setor(sigla, nome));
                     });
             meta.setSetor(setor);
+        }
+
+        // Resolução de Coordenador
+        if (dto.getCoordenadorId() != null) {
+            meta.setCoordenador(coordenadorRepository.getReferenceById(dto.getCoordenadorId()));
+        } else if (dto.getCoordenadorNome() != null && !dto.getCoordenadorNome().isBlank()) {
+            String nomeCoord = dto.getCoordenadorNome().trim();
+            Coordenador coord = coordenadorRepository.findByNome(nomeCoord)
+                    .orElseGet(() -> coordenadorRepository.save(new Coordenador(nomeCoord)));
+            meta.setCoordenador(coord);
         }
 
         sanitizarValoresMatematicos(meta);

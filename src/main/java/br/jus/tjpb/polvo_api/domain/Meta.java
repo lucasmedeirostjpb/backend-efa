@@ -33,6 +33,10 @@ public class Meta extends DomainEntityAuditableUpdate {
     @JoinColumn(name = "setor_id")
     private Setor setor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "coordenador_id")
+    private Coordenador coordenador;
+
     private String artigo;
     private Integer anoCiclo;
     private LocalDate deadline;

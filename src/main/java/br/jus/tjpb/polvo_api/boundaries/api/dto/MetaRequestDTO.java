@@ -28,6 +28,10 @@ public class MetaRequestDTO {
 
     private String setorNome;
 
+    private Long coordenadorId;
+
+    private String coordenadorNome;
+
     private String artigo;
 
     @NotNull(message = "O ano do ciclo é obrigatório.")

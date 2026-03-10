@@ -22,6 +22,9 @@ public class MetaResponseDTO {
     private String setorSigla;
     private String setorNome;
 
+    private Long coordenadorId;
+    private String coordenadorNome;
+
     private String artigo;
     private Integer anoCiclo;
     private LocalDate deadline;

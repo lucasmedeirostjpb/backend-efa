@@ -26,6 +26,7 @@ public interface MetaMapper {
     @Mapping(target = "setorNome", source = "setor.nome")
     @Mapping(target = "coordenadorId", source = "coordenador.id")
     @Mapping(target = "coordenadorNome", source = "coordenador.nome")
+    @Mapping(target = "coordenadorLoginKeycloak", source = "coordenador.loginKeycloak")
     MetaResponseDTO toDTO(Meta entity);
 
     @Mapping(target = "eixo", ignore = true)

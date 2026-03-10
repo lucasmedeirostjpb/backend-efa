@@ -24,6 +24,7 @@ public class MetaResponseDTO {
 
     private Long coordenadorId;
     private String coordenadorNome;
+    private String coordenadorLoginKeycloak;
 
     private String artigo;
     private Integer anoCiclo;

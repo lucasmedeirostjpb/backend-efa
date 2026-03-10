@@ -1,14 +1,23 @@
 package br.jus.tjpb.polvo_api.application.meta.command;
 
-import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaRequestDTO;
-import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaResponseDTO;
-import br.jus.tjpb.polvo_api.boundaries.api.mapper.MetaMapper;
-import br.jus.tjpb.polvo_api.domain.*;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaRequestDTO;
+import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaResponseDTO;
+import br.jus.tjpb.polvo_api.boundaries.api.mapper.MetaMapper;
+import br.jus.tjpb.polvo_api.domain.Coordenador;
+import br.jus.tjpb.polvo_api.domain.CoordenadorRepository;
+import br.jus.tjpb.polvo_api.domain.EixoTematico;
+import br.jus.tjpb.polvo_api.domain.EixoTematicoRepository;
+import br.jus.tjpb.polvo_api.domain.Meta;
+import br.jus.tjpb.polvo_api.domain.MetaRepository;
+import br.jus.tjpb.polvo_api.domain.Setor;
+import br.jus.tjpb.polvo_api.domain.SetorRepository;
+import br.jus.tjpb.polvo_api.domain.StatusMeta;
 
 @Service
 public class CreateMetaBatchCommandHandler {
@@ -39,7 +48,7 @@ public class CreateMetaBatchCommandHandler {
 
             // Resolução de Eixo (Mesma lógica do CreateMetaCommandHandler)
             if (dto.getEixoId() != null) {
-                meta.setEixo(eixoTematicoRepository.getReferenceById(dto.getEixoId()));
+                meta.setEixo(eixoTematicoRepository.getReferenceById(java.util.Objects.requireNonNull(dto.getEixoId())));
             } else if (dto.getEixoNome() != null && !dto.getEixoNome().isBlank()) {
                 String nomeEixo = dto.getEixoNome().trim();
                 EixoTematico eixo = eixoTematicoRepository.findByNome(nomeEixo)
@@ -49,7 +58,7 @@ public class CreateMetaBatchCommandHandler {
 
             // Resolução de Setor (Mesma lógica do CreateMetaCommandHandler)
             if (dto.getSetorId() != null) {
-                meta.setSetor(setorRepository.getReferenceById(dto.getSetorId()));
+                meta.setSetor(setorRepository.getReferenceById(java.util.Objects.requireNonNull(dto.getSetorId())));
             } else if (dto.getSetorNome() != null && !dto.getSetorNome().isBlank()) {
                 String nomeSetor = dto.getSetorNome().trim();
                 Setor setor = setorRepository.findByNome(nomeSetor)
@@ -62,7 +71,7 @@ public class CreateMetaBatchCommandHandler {
 
             // Resolução de Coordenador (find-or-create)
             if (dto.getCoordenadorId() != null) {
-                meta.setCoordenador(coordenadorRepository.getReferenceById(dto.getCoordenadorId()));
+                meta.setCoordenador(coordenadorRepository.getReferenceById(java.util.Objects.requireNonNull(dto.getCoordenadorId())));
             } else if (dto.getCoordenadorNome() != null && !dto.getCoordenadorNome().isBlank()) {
                 String nomeCoord = dto.getCoordenadorNome().trim();
                 Coordenador coord = coordenadorRepository.findByNome(nomeCoord)
@@ -95,18 +104,11 @@ public class CreateMetaBatchCommandHandler {
         }
 
         switch (meta.getStatus()) {
-            case TOTALMENTE_CUMPRIDA:
-                meta.setPontosAtingidos(meta.getPMaximo());
-                break;
-            case NAO_CUMPRIDA:
-                meta.setPontosAtingidos(java.math.BigDecimal.ZERO);
-                break;
-            case PENDENTE:
-            case NAO_SE_APLICA:
-                meta.setPontosAtingidos(null);
-                break;
-            default:
-                break;
+            case TOTALMENTE_CUMPRIDA -> meta.setPontosAtingidos(meta.getPMaximo());
+            case NAO_CUMPRIDA -> meta.setPontosAtingidos(java.math.BigDecimal.ZERO);
+            case PENDENTE, NAO_SE_APLICA -> meta.setPontosAtingidos(null);
+            default -> {
+            }
         }
     }
 

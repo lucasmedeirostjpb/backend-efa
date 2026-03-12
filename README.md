@@ -708,204 +708,693 @@ Este DTO contém **apenas** os campos relacionados ao acompanhamento da meta, pr
 
 ## Fluxos de negócio
 
-### Criação de meta
+### Handlers de comando implementados
 
-Fluxo do `CreateMetaCommandHandler`:
+O projeto implementa 5 handlers principais para operações de comando:
 
-1. Converte o DTO em entidade com o mapper.
-2. Resolve `eixo` por `eixoId`; se não houver, tenta `eixoNome` e cria se necessário.
-3. Resolve `setor` por `setorId`; se não houver, tenta `setorNome` e cria se necessário.
-4. Resolve `coordenador` por `coordenadorId`; se não houver, tenta `coordenadorNome` e cria se necessário.
-5. Se `deadline` vier nulo e `anoCiclo` estiver preenchido, define `31/12/{anoCiclo}`.
-6. Sanitiza os valores matemáticos de acordo com o status.
-7. Valida regras de auditoria.
-8. Persiste a meta e retorna DTO de resposta.
+| Handler | Comando | Transacional | Descrição |
+| --- | --- | --- | --- |
+| `CreateMetaCommandHandler` | `CreateMetaCommand` | Sim | Cria nova meta com resolução automática de referências |
+| `CreateMetaBatchCommandHandler` | `CreateMetaBatchCommand` | Sim | Cria múltiplas metas em lote numa única transação |
+| `UpdateMetaCommandHandler` | `UpdateMetaCommand` | Sim | Atualiza estrutura completa da meta |
+| `UpdateMetaAcompanhamentoCommandHandler` | `UpdateMetaAcompanhamentoCommand` | Sim | Atualiza apenas acompanhamento da meta |
+| `DeleteMetaCommandHandler` | `DeleteMetaCommand` | Sim | Remove meta e registra exclusão no histórico |
 
-Quando `eixoId` e `eixoNome` estão ausentes, o handler lança erro. O mesmo vale para `setorId` e `setorNome`. Para coordenador, a associação é opcional se nenhum dos dois campos for enviado.
+### Criação de meta (individual)
 
-### Criação em lote
+**Fluxo do `CreateMetaCommandHandler`:**
 
-O `CreateMetaBatchCommandHandler` aplica a mesma lógica de resolução e validação item a item sobre uma lista de `MetaRequestDTO`.
+1. **Conversão**: Converte o DTO em entidade usando MetaMapper
+2. **Resolução de Eixo**:
+   - Tenta buscar por `eixoId` se fornecido
+   - Se não encontrar, busca por `eixoNome`
+   - Se não existir, cria novo eixo com o nome fornecido
+   - Exceção se nenhuma referência for fornecida
+3. **Resolução de Setor**:
+   - Tenta buscar por `setorId` se fornecido
+   - Se não encontrar, busca por `setorNome`
+   - Se não existir, cria novo setor (sigla = nome truncado em 50 chars)
+   - Exceção se nenhuma referência for fornecida
+4. **Resolução de Coordenador**:
+   - Tenta buscar por `coordenadorId` se fornecido
+   - Se não encontrar, busca por `coordenadorNome`
+   - Se não existir, cria novo coordenador com o nome fornecido
+   - Campo opcional - pode ficar nulo
+5. **Deadline automático**: Se `deadline` for nulo e `anoCiclo` estiver preenchido, define para `31/12/{anoCiclo}`
+6. **Sanitização**: Aplica regras de sanitização de valores matemáticos conforme status (detalhes na seção de Regras de Negócio)
+7. **Validação**: Valida evidências de auditoria para status de conclusão (mín 20 caracteres)
+8. **Persistência**: Salva a meta e registra no histórico JaVers
+9. **Resposta**: Retorna DTO da meta criada
 
-Características do fluxo:
+### Criação em lote (batch)
 
-- percorre todos os itens em um único handler transacional;
-- reutiliza a lógica de criação de catálogos por nome;
-- devolve uma lista de `MetaResponseDTO`;
-- exige role `DIGOV` no controller.
+**Fluxo do `CreateMetaBatchCommandHandler`:**
+
+- Percorre lista de `MetaRequestDTO` em uma **única transação**
+- Aplica o mesmo fluxo de `CreateMetaCommandHandler` para cada item
+- Reutiliza a lógica de resolução e criação de catálogos (eixo, setor, coordenador)
+- Retorna lista de `MetaResponseDTO` para todas as metas criadas
+- Se houver erro em qualquer meta, toda a transação é revertida (atomicidade)
+
+**Vantagens:**
+- Reduz roundtrips de rede
+- Mantém integridade transacional
+- Ideal para importações em massa ou migrations
 
 ### Atualização estrutural de meta
 
-O `UpdateMetaCommandHandler`:
+**Fluxo do `UpdateMetaCommandHandler`:**
 
-1. carrega a meta por ID;
-2. aplica atualização parcial via mapper;
-3. resolve novamente eixo, setor e coordenador pelos campos enviados;
-4. reaplica sanitização matemática;
-5. reaplica validação de auditoria;
-6. salva e devolve o DTO atualizado.
+1. Carrega meta existente por ID (exceção se não encontrar)
+2. Aplica atualização parcial via mapper (preserva campos não enviados)
+3. Re-resolve eixo, setor e coordenador conforme campos enviados
+4. Reaplica sanitização matemática conforme novo status
+5. Reaplica validação de evidências de auditoria
+6. Salva alterações e registra no JaVers
+7. Retorna DTO atualizado
+
+**Importante:** Este endpoint preserva a estrutura completa da meta e exige role `DIGOV`.
 
 ### Atualização de acompanhamento
 
-O `UpdateMetaAcompanhamentoCommandHandler`:
+**Fluxo do `UpdateMetaAcompanhamentoCommandHandler`:**
 
-1. carrega a meta por ID;
-2. aplica apenas `status`, `nivelDificuldade`, `evidenciasAuditoria`, `observacoes`, `estimativaReal`, `tetoEstimado` e `pontosAtingidos`;
-3. preserva todos os campos estruturais da meta;
-4. reaplica sanitização matemática;
-5. reaplica validação de auditoria;
-6. salva e devolve o DTO atualizado.
+1. Carrega meta existente por ID
+2. Atualiza **apenas** campos de acompanhamento:
+   - `status`
+   - `nivelDificuldade`
+   - `evidenciasAuditoria`
+   - `observacoes`
+   - `estimativaReal`
+   - `tetoEstimado`
+   - `pontosAtingidos`
+3. **Preserva todos os campos estruturais** (título, eixo, setor, coordenador, anoCiclo, etc)
+4. Reaplica sanitização matemática conforme novo status
+5. Reaplica validação de evidências de auditoria
+6. Salva e retorna DTO atualizado
 
-O acesso a esse endpoint é permitido para:
-
-- `DIGOV`;
-- o coordenador dono da meta;
-- qualquer usuário autenticado cujo CPF esteja cadastrado em `efa_delegacoes` para o coordenador da meta.
+**Acesso permitido para:**
+- `DIGOV` (acesso total)
+- Coordenador dono da meta (via `loginKeycloak`)
+- Delegados do coordenador (via `delegadoEmail`)
 
 ### Exclusão de meta
 
-O `DeleteMetaCommandHandler` valida a existência da meta e então executa `deleteById`. O histórico do JaVers registra a remoção como evento de exclusão.
+**Fluxo do `DeleteMetaCommandHandler`:**
 
-### Regras de negócio mais relevantes
+1. Valida que a meta existe (exceção se não encontrar)
+2. Executa `deleteById` no repositório
+3. JaVers registra evento de exclusão no histórico
+4. Retorna resposta vazia (HTTP 204)
 
-#### Evidências obrigatórias em metas concluídas
+**Nota:** O histórico da meta permanece no JaVers mesmo após exclusão.
 
-Para os status abaixo:
+## Regras de negócio e validações
+
+### 1. Sanitização matemática por status
+
+O sistema ajusta automaticamente valores numéricos conforme o status da meta:
+
+| Status | Regra aplicada |
+| --- | --- |
+| `PENDENTE` | `pontosAtingidos` = `null`, limpa `estimativaReal` e `tetoEstimado` |
+| `EM_ANDAMENTO` | Preserva `estimativaReal`, `tetoEstimado` e `pontosAtingidos` |
+| `TOTALMENTE_CUMPRIDA` | `pontosAtingidos` = `pMaximo`, limpa `estimativaReal` e `tetoEstimado` |
+| `PARCIALMENTE_CUMPRIDA` | Preserva `pontosAtingidos` informado, limpa `estimativaReal` e `tetoEstimado` |
+| `NAO_CUMPRIDA` | `pontosAtingidos` = `0`, limpa `estimativaReal` e `tetoEstimado` |
+| `NAO_SE_APLICA` | `pontosAtingidos` = `null`, limpa `estimativaReal` e `tetoEstimado` |
+
+**Razão:** Esta regra garante consistência nos dados e evita valores incoerentes com o estado da meta.
+
+### 2. Evidências obrigatórias em metas concluídas
+
+Para os seguintes status, o campo `evidenciasAuditoria` é **obrigatório** e deve conter **pelo menos 20 caracteres**:
 
 - `TOTALMENTE_CUMPRIDA`
 - `PARCIALMENTE_CUMPRIDA`
 - `NAO_CUMPRIDA`
 
-o campo `evidenciasAuditoria` deve conter pelo menos 20 caracteres úteis. Caso contrário, o handler lança `IllegalArgumentException`.
+**Validação:** `IllegalArgumentException` se a regra não for atendida.
 
-#### Sanitização matemática por status
+**Razão:** Garantir rastreabilidade e documentação de metas finalizadas.
 
-- Se a meta não estiver em `EM_ANDAMENTO`, `tetoEstimado` e `estimativaReal` são limpos.
-- Em `TOTALMENTE_CUMPRIDA`, `pontosAtingidos` recebe `pMaximo`.
-- Em `NAO_CUMPRIDA`, `pontosAtingidos` recebe `0`.
-- Em `PENDENTE` e `NAO_SE_APLICA`, `pontosAtingidos` é limpo.
-- Em `PARCIALMENTE_CUMPRIDA`, o valor já informado de `pontosAtingidos` é preservado.
-
-#### Resolução automática de referências
+### 3. Resolução automática de referências (find-or-create)
 
 O backend aceita dois modos de associação para eixo, setor e coordenador:
 
-- por ID, quando o catálogo já existe;
-- por nome, com criação automática quando o registro ainda não existe.
+#### Por ID (quando o registro já existe):
+```json
+{
+  "eixoId": 123,
+  "setorId": 456,
+  "coordenadorId": 789
+}
+```
 
-No caso de setor, a sigla do registro criado automaticamente usa o próprio nome truncado para no máximo 50 caracteres.
+#### Por nome (com criação automática):
+```json
+{
+  "eixoNome": "Eficiência Operacional",
+  "setorNome": "Secretaria Judiciária",
+  "coordenadorNome": "Maria Silva"
+}
+```
 
-## Auditoria e histórico
+**Comportamento:**
+- Sistema busca primeiro por nome no banco
+- Se não encontrar, cria novo registro com o nome fornecido
+- Para setores criados automaticamente: `sigla` = `nome` (truncado em 50 chars)
+- Para coordenadores criados automaticamente: `loginKeycloak` = `null` inicialmente
 
-### JPA Auditing
+**Exceção:** Se nenhuma referência (nem ID nem nome) for fornecida para eixo ou setor, lança erro.
 
-O projeto habilita `@EnableJpaAuditing` e usa um `AuditorAware<String>` para preencher campos de autoria nas entidades.
+### 4. Deadline automático
 
-Comportamento atual:
+Se `deadline` não for informado e `anoCiclo` estiver preenchido:
+```
+deadline = LocalDate.of(anoCiclo, 12, 31)
+```
 
-- se houver usuário autenticado, grava `AppUser.id()`;
-- se não houver usuário autenticado, grava `system`.
+Exemplo: `anoCiclo: 2026` → `deadline: 2026-12-31`
 
-### JaVers
+### 5. Validação de delegações
 
-O `MetaRepository` está anotado com `@JaversSpringDataAuditable`, então operações de persistência em `Meta` geram histórico automaticamente.
+Ao criar uma delegação:
+- Email deve ser válido (`@Email`)
+- Nome é obrigatório (`@NotBlank`)
+- Sistema verifica duplicatas (UNIQUE constraint no banco)
+- Lança `HTTP 409 Conflict` se delegação já existir para aquele email
 
-O autor do commit JaVers é:
+### 6. Cálculo de KPIs
 
-- `preferred_username` do JWT, quando disponível;
-- `sistema`, como fallback.
+**Pontos aplicáveis:**
+```sql
+SUM(CASE WHEN status <> 'NAO_SE_APLICA' THEN pMaximo ELSE 0 END)
+```
 
-### Endpoint de histórico
+**Percentual de tração:**
+```
+percentualTracao = (somaPontosAtingidos / somaPontosAplicaveis) × 100
+```
 
-`GET /api/metas/{id}/historico`:
+**Arredondamento:** 4 casas decimais na divisão, resultado final em BigDecimal.
 
-- valida se a meta existe;
-- consulta as mudanças do JaVers por `instanceId`;
-- agrupa mudanças por commit;
-- classifica eventos em `CRIACAO`, `ATUALIZACAO` e `EXCLUSAO`;
-- devolve autor, data/hora e propriedades alteradas de cada commit.
+### 7. Validações de input (Bean Validation)
+
+O sistema aplica validações padrão Java Bean Validation em todos os DTOs:
+
+| Anotação | Aplicação | Significado |
+| --- | --- | --- |
+| `@NotNull` | Campos obrigatórios | Campo não pode ser nulo |
+| `@NotBlank` | Strings obrigatórias | String não pode ser vazia ou apenas espaços |
+| `@Positive` | Números positivos | Valor deve ser maior que zero |
+| `@PositiveOrZero` | Números não-negativos | Valor deve ser zero ou positivo |
+| `@Email` | Emails | Formato de email válido |
+| `@Size(min=X)` | Tamanho mínimo | String deve ter pelo menos X caracteres |
+
+**Resposta em caso de validação falha:** HTTP 400 Bad Request com detalhes dos erros.
+
+### 8. Segurança granular por ownership
+
+A regra `@metaSecurity.isDonoDaMeta(#id, #jwt)` verifica:
+
+1. **É o coordenador?**
+   - Compara `meta.coordenador.loginKeycloak` com `jwt.claim("preferred_username")`
+   
+2. **É um delegado?**
+   - Busca em `efa_delegacoes` onde:
+     - `coordenador_id` = `meta.coordenador_id`
+     - `delegado_email` = email do JWT
+
+3. **Autoriza se:** Qualquer uma das condições acima for verdadeira
+
+**Aplicação:** Endpoint `PUT /api/metas/{id}/acompanhamento`
+
+## KPIs e Dashboard
+
+### Endpoint de dashboard
+
+**Rota:** `GET /api/kpis/dashboard`  
+**Autorização:** `@PreAuthorize("hasAnyRole('COORDENADOR', 'DIGOV')")`  
+**Controller:** `KpiQueryController`
+
+### Resposta
+
+```json
+{
+  "totalMetas": 50,
+  "somaPontosAplicaveis": 2500.00,
+  "somaPontosAtingidos": 1850.50,
+  "percentualTracao": 74.02
+}
+```
+
+### Cálculo dos KPIs
+
+#### Total de Metas
+```sql
+COUNT(m.id)
+```
+Conta todas as metas no sistema, independente do status.
+
+#### Pontos Aplicáveis
+```sql
+SUM(CASE WHEN m.status <> 'NAO_SE_APLICA' THEN m.pMaximo ELSE 0 END)
+```
+Soma o `pMaximo` de todas as metas **exceto** as com status `NAO_SE_APLICA`.
+
+**Razão:** Metas não aplicáveis não devem influenciar o cálculo de performance.
+
+#### Pontos Atingidos
+```sql
+SUM(m.pontosAtingidos)
+```
+Soma todos os `pontosAtingidos`, incluindo valores nulos (tratados como 0).
+
+#### Percentual de Tração
+```java
+percentualTracao = (somaPontosAtingidos / somaPontosAplicaveis) × 100
+```
+
+**Precisão:** 4 casas decimais na divisão intermediária  
+**Arredondamento:** `RoundingMode.HALF_UP`  
+**Proteção:** Se `somaPontosAplicaveis` for zero, retorna `0.00`
+
+### Exemplo de cálculo
+
+**Cenário:**
+- 10 metas no total
+- 8 metas aplicáveis (pMaximo = 100 cada) = 800 pontos aplicáveis
+- 2 metas NAO_SE_APLICA (ignoradas no cálculo)
+- 550 pontos atingidos no total
+
+**Resultado:**
+```json
+{
+  "totalMetas": 10,
+  "somaPontosAplicaveis": 800.00,
+  "somaPontosAtingidos": 550.00,
+  "percentualTracao": 68.75
+}
+```
+
+### Implementação
+
+A query é implementada como método nativo no `MetaRepository`:
+
+```java
+@Query(value = """
+    SELECT 
+        COUNT(m.id) as totalMetas,
+        SUM(CASE WHEN m.status <> 'NAO_SE_APLICA' 
+            THEN m.p_maximo ELSE 0 END) as somaPontosAplicaveis,
+        SUM(m.pontos_atingidos) as somaPontosAtingidos
+    FROM efa_metas m
+    """, nativeQuery = true)
+DashboardKpiDTO obterKpisGlobaisRaw();
+```
+
+O controller então calcula o `percentualTracao` a partir dos valores retornados.
+
+### Casos especiais
+
+| Situação | Comportamento |
+| --- | --- |
+| Nenhuma meta no sistema | `totalMetas = 0`, `percentualTracao = 0` |
+| Todas as metas são NAO_SE_APLICA | `somaPontosAplicaveis = 0`, `percentualTracao = 0` |
+| Metas com pontosAtingidos = null | Tratados como 0 na soma |
+| Divisão por zero | Proteção: retorna `percentualTracao = 0` |
+
+O sistema implementa um **modelo de auditoria em três camadas** para garantir rastreabilidade completa de todas as operações.
+
+### Camada 1: JPA Auditing (auditoria técnica)
+
+**Configuração:** `@EnableJpaAuditing` em `JpaConfig.java`
+
+**Campos auditados automaticamente:**
+- `dataCriacao` + `usuarioCriacao` (imutáveis, preenchidos na criação)
+- `dataAtualizacao` + `usuarioAtualizacao` (atualizados em cada mudança)
+
+**Extração do usuário:**
+- Interface: `AuditorAware<String>` implementada por `AppUserResolver`
+- Fonte primária: `AppUser.id()` do `SecurityContext`
+- Fallback: `"system"` quando não há usuário autenticado
+
+**Aplicação:** Todas as entidades que herdam de `DomainEntityAuditableUpdate`
+
+### Camada 2: JaVers (histórico completo de alterações)
+
+**Configuração:** `JaversConfig.java` com `AuthorProvider` customizado
+
+**Funcionalidade:**
+- Rastreamento automático de **todas as mudanças** em objetos anotados
+- Histórico de criação, atualização e exclusão
+- Comparação de valores: valor anterior vs. novo valor
+- Suporte a queries temporais
+
+**Extração do autor:**
+- Fonte primária: claim `preferred_username` do JWT
+- Fallback: `"sistema"` quando não há autenticação
+
+**Ativação:** `@JaversSpringDataAuditable` no `MetaRepository`
+
+**Tabelas no banco:**
+- `jv_global_id` - Identificadores globais de objetos
+- `jv_commit` - Commits de mudanças
+- `jv_commit_property` - Propriedades dos commits (autor, timestamp)
+- `jv_snapshot` - Snapshots dos objetos em cada versão
+
+### Camada 3: API de Histórico
+
+**Endpoint:** `GET /api/metas/{id}/historico`
+
+**Retorna:** Lista de `HistoricoAlteracaoDTO` ordenada por data (mais recente primeiro)
+
+**Estrutura da resposta:**
+
+```json
+[
+  {
+    "autor": "joao.silva",
+    "dataHora": "2026-03-12T10:30:00Z",
+    "tipoMudanca": "CRIACAO",
+    "propriedadesAlteradas": []
+  },
+  {
+    "autor": "maria.santos",
+    "dataHora": "2026-03-12T14:15:00Z",
+    "tipoMudanca": "ATUALIZACAO",
+    "propriedadesAlteradas": [
+      {
+        "propriedade": "status",
+        "valorAntigo": "PENDENTE",
+        "novoValor": "EM_ANDAMENTO"
+      },
+      {
+        "propriedade": "pontosAtingidos",
+        "valorAntigo": null,
+        "novoValor": "25.50"
+      }
+    ]
+  },
+  {
+    "autor": "admin",
+    "dataHora": "2026-03-12T16:00:00Z",
+    "tipoMudanca": "EXCLUSAO",
+    "propriedadesAlteradas": []
+  }
+]
+```
+
+**Tipos de mudança:**
+- `CRIACAO` - Meta foi criada (evento `NewObject`)
+- `ATUALIZACAO` - Meta foi modificada (eventos `ValueChange`)
+- `EXCLUSAO` - Meta foi removida (evento `ObjectRemoved`)
+
+**Processamento:**
+1. Query no JaVers: `QueryBuilder.byInstanceId(id, Meta.class).build()`
+2. Agrupa mudanças por commit (CommitMetadata)
+3. Ordena por data decrescente
+4. Extrai autor, timestamp e propriedades alteradas
+5. Retorna lista formatada
+
+**Nota:** O histórico permanece disponível mesmo após exclusão da meta.
+
+### Diferenças entre JPA Auditing e JaVers
+
+| Aspecto | JPA Auditing | JaVers |
+| --- | --- | --- |
+| **Propósito** | Registrar quem/quando criou/atualizou | Histórico completo de mudanças |
+| **Granularidade** | Apenas primeira e última alteração | Todas as alterações, propriedade por propriedade |
+| **Armazenamento** | Colunas na própria tabela | Tabelas separadas (jv_*) |
+| **Autor** | `AppUser.id()` ou `"system"` | `preferred_username` ou `"sistema"` |
+| **Acesso** | Direto nas entidades | Via query JaVers ou endpoint de histórico |
+| **Exclusão** | Dados perdidos quando entidade é deletada | Histórico preservado |
+
+### Elastic APM (Application Performance Monitoring)
+
+**Biblioteca:** `co.elastic.apm:apm-agent-attach` (v1.43.0)
+
+**Ativação:** `ElasticApmAttacher.attach()` na classe principal (`PolvoEficienciaEmAcaoApplication`)
+
+**Funcionalidade:**
+- Rastreamento distribuído de requisições
+- Monitoramento de performance de métodos
+- Captura de exceções e erros
+- Métricas de JVM e aplicação
+
+**Configuração:** Via variáveis de ambiente ou arquivo `elasticapm.properties`
+
+**Nota:** O agente é anexado automaticamente no bootstrap da aplicação, antes da inicialização do Spring.
 
 ## Observabilidade e documentação da API
 
 ### Logging
 
-`logback-spring.xml` define dois formatos:
+**Configuração:** `logback-spring.xml` com suporte a profiles
 
-- `dev`: logs em texto no console;
-- demais profiles: logs JSON com `LogstashEncoder`.
+O sistema possui dois modos de logging:
 
-Além disso, `application.yaml` eleva para `TRACE` categorias relacionadas a segurança OAuth2:
+#### Profile `dev` (desenvolvimento)
+- Formato: Texto legível no console
+- Nível: INFO (padrão)
+- Ideal para: Debug local e desenvolvimento
 
-- `org.springframework.security`
-- `org.springframework.security.oauth2`
-- `com.nimbusds`
+#### Demais profiles (produção)
+- Formato: JSON via `LogstashEncoder`
+- Integração: ELK Stack (Elasticsearch, Logstash, Kibana)
+- Estruturado para análise e agregação
 
-### Elastic APM
+**Níveis de log especiais** (em `application.yaml`):
 
-A classe principal executa `ElasticApmAttacher.attach()` antes de subir o contexto Spring. Isso indica que o processo tenta anexar o agente APM em tempo de execução.
+```yaml
+logging:
+  level:
+    org.springframework.security: TRACE
+    org.springframework.security.oauth2: TRACE
+    com.nimbusds: TRACE
+```
+
+Esses níveis ajudam a debugar problemas de autenticação OAuth2/JWT.
+
+### Elastic APM (Application Performance Monitoring)
+
+**Biblioteca:** `co.elastic.apm:apm-agent-attach` (v1.43.0)
+
+**Ativação:**
+```java
+ElasticApmAttacher.attach();
+```
+
+Executado na classe principal **antes** da inicialização do Spring Boot.
+
+**Funcionalidades:**
+- Rastreamento distribuído de requisições HTTP
+- Métricas de performance de métodos
+- Monitoramento de queries SQL
+- Captura automática de exceções
+- Métricas de JVM (heap, GC, threads)
+
+**Configuração:** Via variáveis de ambiente ou arquivo `elasticapm.properties` (não incluído no repositório)
 
 ### OpenAPI / Swagger
 
-Com `springdoc-openapi-starter-webmvc-ui`, a documentação HTTP fica disponível em:
+**Biblioteca:** `springdoc-openapi-starter-webmvc-ui`
 
-- `/swagger-ui.html`
-- `/swagger-ui/**`
-- `/v3/api-docs/**`
+**Endpoints disponíveis:**
+- **UI interativa:** `/swagger-ui.html` ou `/swagger-ui/index.html`
+- **Especificação OpenAPI:** `/v3/api-docs` (JSON)
+- **Especificação YAML:** `/v3/api-docs.yaml`
 
-Essas rotas estão liberadas na configuração de segurança.
+**Acesso:** Públicoconfigurado na `SecurityFilterChain`
 
-### Script utilitário de teste manual
+**Uso:**
+- Exploração interativa de todos os endpoints
+- Documentação automática gerada do código
+- Teste manual direto pela interface
+- Geração de clientes API
 
-O arquivo `teste_api_keycloak.bat` pode ser usado como ponto de partida para testes manuais de autenticação e chamadas à API em ambiente Windows.
+### Script de teste manual
+
+**Arquivo:** `teste_api_keycloak.bat`
+
+**Propósito:** Script Windows para testes manuais de:
+- Autenticação no Keycloak
+- Obtenção de tokens JWT
+- Chamadas à API com bearer token
+
+Útil para validação rápida de integração Keycloak → API.
+
+### DevTools
+
+**Biblioteca:** `spring-boot-devtools` (runtime, opcional)
+
+**Funcionalidades:**
+- Restart automático em mudanças de código
+- LiveReload para reload de recursos estáticos
+- Cache desabilitado em desenvolvimento
 
 ## Testes
 
-O projeto já possui testes automatizados básicos, concentrados em handlers de comando e bootstrap da aplicação.
+O projeto possui testes automatizados focados em regras de negócio críticas e bootstrap da aplicação.
 
-### Cobertura existente
+### Cobertura de testes existente
 
-| Tipo | Arquivo | Cobertura atual |
-| --- | --- | --- |
-| Unitário | `CreateMetaCommandHandlerTest` | Regras de sanitização por status |
-| Unitário | `UpdateMetaCommandHandlerTest` | Regras de sanitização por status |
-| Integração básica | `PolvoEficienciaEmAcaoApplicationTests` | Subida do contexto Spring |
+| Tipo | Classe de teste | Foco | Tecnologia |
+| --- | --- | --- | --- |
+| Unitário | `CreateMetaCommandHandlerTest` | Regras de sanitização na criação | JUnit 5 + Mockito |
+| Unitário | `UpdateMetaCommandHandlerTest` | Regras de sanitização na atualização | JUnit 5 + Mockito |
+| Unitário | `UpdateMetaAcompanhamentoCommandHandlerTest` | Regras de sanitização no acompanhamento | JUnit 5 + Mockito |
+| Unitário | `MetaMapperTest` | Mapeamento correto de DTOs | JUnit 5 + MapStruct |
+| Integração | `DelegacaoControllerTest` | Endpoints de delegação | Spring Boot Test + MockMVC |
+| Integração | `MetaCommandControllerSecurityTest` | Segurança dos endpoints de comando | Spring Security Test |
+| Integração | `MetaCommandControllerAuthorizationTest` | Autorização granular por ownership | Spring Security Test |
+| Integração | `MetaSecurityValidatorTest` | Lógica `isDonoDaMeta()` | Spring Boot Test |
+| Smoke | `PolvoEficienciaEmAcaoApplicationTests` | Subida do contexto Spring | Spring Boot Test |
 
-### O que esses testes validam hoje
+### Regras de negócio validadas
 
-- limpeza de `tetoEstimado` e `estimativaReal` fora de `EM_ANDAMENTO`;
-- preenchimento automático de `pontosAtingidos` em `TOTALMENTE_CUMPRIDA`;
-- zeramento de `pontosAtingidos` em `NAO_CUMPRIDA`;
-- limpeza de `pontosAtingidos` em `NAO_SE_APLICA` e `PENDENTE`;
-- preservação de `pontosAtingidos` em `PARCIALMENTE_CUMPRIDA`.
+#### Sanitização matemática por status (handlers)
+✅ `PENDENTE` → limpa `pontosAtingidos`, `estimativaReal`, `tetoEstimado`  
+✅ `EM_ANDAMENTO` → preserva todos os valores  
+✅ `TOTALMENTE_CUMPRIDA` → `pontosAtingidos = pMaximo`  
+✅ `PARCIALMENTE_CUMPRIDA` → preserva `pontosAtingidos` informado  
+✅ `NAO_CUMPRIDA` → `pontosAtingidos = 0`  
+✅ `NAO_SE_APLICA` → limpa `pontosAtingidos`
 
-### Lacunas de teste ainda relevantes
+#### Segurança e autorização
+✅ `DIGOV` pode atualizar qualquer meta  
+✅ Coordenador pode atualizar acompanhamento de suas metas  
+✅ Delegado pode atualizar acompanhamento de metas do coordenador  
+✅ Negação correta para usuários não autorizados
 
-- controllers e regras de autorização;
-- endpoint de histórico;
-- criação em lote;
-- resolução automática por nome;
-- deadline padrão;
-- validação mínima de evidências;
-- integração entre Liquibase, PostgreSQL e segurança.
+#### Delegações
+✅ Criação de delegação com validações  
+✅ Listagem apenas das delegações do coordenador autenticado  
+✅ Exclusão apenas de delegações próprias
+
+### Executando os testes
+
+**Via Maven Wrapper:**
+```powershell
+.\mvnw.cmd test
+```
+
+**Via IDE:**
+- IntelliJ IDEA: Clique direito na pasta `src/test/java` → "Run Tests"
+- VSCode: Use extensão Java Test Runner
+
+**Relatórios:**
+- Console: Saída direta
+- Surefire: `target/surefire-reports/`
+
+### Áreas com cobertura limitada
+
+As seguintes áreas ainda precisam de mais testes:
+
+- ⚠️ Endpoint de histórico JaVers
+- ⚠️ Criação em lote (batch)
+- ⚠️ Resolução automática de referências (find-or-create)
+- ⚠️ Cálculo de KPIs e dashboard
+- ⚠️ Validação de evidências mínimas (20 caracteres)
+- ⚠️ Integração completa Liquibase + PostgreSQL
+- ⚠️ Queries customizadas de repositório
 
 ## Pontos de atenção
 
-### 1. Segurança de `/api/metas/**` depende de method security
+### 1. Segurança baseada em method security
 
-A chain HTTP está permissiva para todos os verbos em `/api/metas/**`. O bloqueio real acontece nos métodos anotados do controller. Isso é importante para manutenção e troubleshooting de autenticação.
+⚠️ **Importante:** A `SecurityFilterChain` HTTP libera explicitamente `/api/metas/**` para todos os métodos HTTP (GET, POST, PUT, DELETE).
 
-### 2. Coordenador usa endpoint próprio de acompanhamento
+**Proteção real:** Anotações `@PreAuthorize` nos métodos dos controllers.
 
-Após a correção do backend, o coordenador não deve mais chamar o `PUT /api/metas/{id}` estrutural. O fluxo correto para esse perfil é `PUT /api/metas/{id}/acompanhamento`.
+**Razão:** Permite consultas públicas de metas, mas restringe comandos via method security.
 
-### 3. Configuração local hardcoded
+**Implicação:** Ao debugar problemas de autorização, verificar as anotações de método, não apenas a configuração HTTP.
 
-O `application.yaml` atual usa `postgres/postgres` e URIs locais fixas. Para ambientes compartilhados ou produção, isso deve ser externalizado.
+### 2. Coordenador e delegado usam endpoint separado
 
-### 4. Dependências presentes, mas sem fluxo explícito documentado no código explorado
+✅ **Fluxo correto:**
+- **DIGOV:** Usa `PUT /api/metas/{id}` (atualização estrutural completa)
+- **Coordenador/Delegado:** Usa `PUT /api/metas/{id}/acompanhamento` (apenas acompanhamento)
 
-As dependências de Artemis e JobRunr estão declaradas no `pom.xml`, mas este backend, no estado atual explorado, não expõe fluxo funcional evidente dessas integrações no README nem nos casos de uso principais de meta.
+❌ **Evitar:**
+- Coordenador tentando usar `PUT /api/metas/{id}` → Negado (falta role DIGOV)
+
+**Razão:** Separação de responsabilidades - estrutura vs. acompanhamento.
+
+### 3. Configuração local não externalizada
+
+⚠️ **Atenção:** `application.yaml` contém valores hardcoded:
+
+```yaml
+datasource:
+  url: jdbc:postgresql://localhost:5432/db_polvo
+  username: postgres
+  password: postgres
+  
+oauth2:
+  resourceserver:
+    jwt:
+      issuer-uri: http://localhost:8080/realms/tjpb-polvo
+```
+
+**Recomendação para produção:**
+- Externalize via variáveis de ambiente
+- Use Spring Cloud Config ou similar
+- Proteja credenciais com Vault ou AWS Secrets Manager
+
+### 4. Diferença entre autores JPA Auditing e JaVers
+
+⚠️ **Comportamento atual:**
+- **JPA Auditing:** Grava `AppUser.id()` (implementação customizada)
+- **JaVers:** Grava `preferred_username` do JWT
+
+**Resultado:** Os campos `usuarioCriacao`/`usuarioAtualizacao` podem ter valor ligeiramente diferente do `autor` no histórico JaVers.
+
+**Razão:** Fontes diferentes de extração do usuário.
+
+### 5. Dependências declaradas mas não utilizadas
+
+As seguintes dependências estão no `pom.xml` mas não têm uso evidente no código explorado:
+
+- `spring-boot-starter-artemis` - Messaging com ActiveMQ Artemis
+- JobRunr (se declarado) - Schedule de jobs
+
+**Status:** Preparação para features futuras ou legado de configuração inicial.
+
+### 6. Migrations irreversíveis
+
+⚠️ **Atenção:** As migrations Liquibase não possuem rollback explícito.
+
+**Implicação:** Em caso de erro, rollback manual é necessário.
+
+**Recomendação:** Testar migrations em ambiente de homologação antes de produção.
+
+### 7. Histórico JaVers cresce indefinidamente
+
+⚠️ **Observação:** Não há estratégia de archive ou cleanup de histórico antigo configurada.
+
+**Implicação:** As tabelas `jv_*` crescem continuamente.
+
+**Recomendação futuro:** Implementar política de archive/cleanup para históricos muito antigos.
+
+### 8. TSID como gerador de IDs
+
+✅ **Vantagens:**
+- IDs ordenáveis por tempo de criação
+- Distribuídos sem conflitos
+- Melhor performance que UUID em índices B-tree
+
+⚠️ **Atenção:**
+- Gerados em aplicação (não no banco)
+- Expõem aproximadamente quando o registro foi criado
+- Não são criptograficamente seguros
 
 ## Licença e uso
 
-Uso interno do Tribunal de Justiça da Paraíba.
+Uso interno do Tribunal de Justiça da Paraíba (TJPB).
+
+Sistema desenvolvido para o programa **Eficiência em Ação**.
+
+**Contato técnico:** Departamento de Tecnologia da Informação (DTI) - TJPB

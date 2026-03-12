@@ -21,17 +21,8 @@ public class JpaConfig {
 
     @Bean
     public AuditorAware<String> auditorProvider() {
-        return new AuditorAware<String>() {
-            @Override
-            @org.springframework.lang.NonNull
-            @SuppressWarnings("null")
-            public Optional<String> getCurrentAuditor() {
-                AppUser user = appUserResolver.resolveCurrentUser();
-                if (user == null) {
-                    return Optional.of("system");
-                }
-                return Optional.of(user.id());
-            }
-        };
+        return () -> Optional.ofNullable(appUserResolver.resolveCurrentUser())
+                .map(AppUser::id)
+                .or(() -> Optional.of("system"));
     }
 }

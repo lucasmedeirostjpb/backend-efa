@@ -11,7 +11,6 @@ import br.jus.tjpb.polvo_api.domain.MetaRepository;
 import br.jus.tjpb.polvo_api.domain.Setor;
 import br.jus.tjpb.polvo_api.domain.SetorRepository;
 import br.jus.tjpb.polvo_api.domain.StatusMeta;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -45,8 +44,7 @@ class CreateMetaCommandHandlerTest {
     private MetaRequestDTO dto = new MetaRequestDTO();
     private AppUser appUser;
 
-    @BeforeEach
-    void setup() {
+    private void prepareScenario() {
         dto = new MetaRequestDTO();
         dto.setEixoId(1L);
         dto.setSetorId(1L);
@@ -69,6 +67,7 @@ class CreateMetaCommandHandlerTest {
 
     @Test
     void shouldClearTetoAndEstimativaIfStatusIsNotEmAndamento() {
+        prepareScenario();
         meta.setStatus(StatusMeta.PENDENTE);
 
         handler.handle(new CreateMetaCommand(appUser, dto));
@@ -80,6 +79,7 @@ class CreateMetaCommandHandlerTest {
 
     @Test
     void shouldKeepTetoAndEstimativaIfStatusIsEmAndamento() {
+        prepareScenario();
         meta.setStatus(StatusMeta.EM_ANDAMENTO);
 
         handler.handle(new CreateMetaCommand(appUser, dto));
@@ -91,6 +91,7 @@ class CreateMetaCommandHandlerTest {
 
     @Test
     void shouldSetPontosToPMaximoIfStatusIsTotalmenteCumprida() {
+        prepareScenario();
         meta.setStatus(StatusMeta.TOTALMENTE_CUMPRIDA);
 
         handler.handle(new CreateMetaCommand(appUser, dto));
@@ -102,6 +103,7 @@ class CreateMetaCommandHandlerTest {
 
     @Test
     void shouldSetPontosToZeroIfStatusIsNaoCumprida() {
+        prepareScenario();
         meta.setStatus(StatusMeta.NAO_CUMPRIDA);
 
         handler.handle(new CreateMetaCommand(appUser, dto));
@@ -113,6 +115,7 @@ class CreateMetaCommandHandlerTest {
 
     @Test
     void shouldClearPontosIfStatusIsNaoSeAplica() {
+        prepareScenario();
         meta.setStatus(StatusMeta.NAO_SE_APLICA);
 
         handler.handle(new CreateMetaCommand(appUser, dto));
@@ -124,6 +127,7 @@ class CreateMetaCommandHandlerTest {
 
     @Test
     void shouldKeepPontosIfStatusIsParcialmenteCumprida() {
+        prepareScenario();
         meta.setStatus(StatusMeta.PARCIALMENTE_CUMPRIDA);
 
         handler.handle(new CreateMetaCommand(appUser, dto));

@@ -9,7 +9,6 @@ import br.jus.tjpb.polvo_api.domain.Meta;
 import br.jus.tjpb.polvo_api.domain.MetaRepository;
 import br.jus.tjpb.polvo_api.domain.NivelDificuldade;
 import br.jus.tjpb.polvo_api.domain.StatusMeta;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -36,12 +35,13 @@ class UpdateMetaAcompanhamentoCommandHandlerTest {
     @InjectMocks
     private UpdateMetaAcompanhamentoCommandHandler handler;
 
-    private Meta meta;
-    private MetaAcompanhamentoRequestDTO dto;
+    @org.springframework.lang.NonNull
+    private Meta meta = new Meta();
+    @org.springframework.lang.NonNull
+    private MetaAcompanhamentoRequestDTO dto = new MetaAcompanhamentoRequestDTO();
     private AppUser appUser;
 
-    @BeforeEach
-    void setup() {
+    private void prepareScenario() {
         dto = new MetaAcompanhamentoRequestDTO();
         dto.setStatus(StatusMeta.EM_ANDAMENTO);
         dto.setNivelDificuldade(NivelDificuldade.EM_ALERTA);
@@ -66,6 +66,7 @@ class UpdateMetaAcompanhamentoCommandHandlerTest {
 
     @Test
     void shouldUpdateOnlyAcompanhamentoFieldsAndPreserveStructure() {
+        prepareScenario();
         when(metaRepository.save(meta)).thenReturn(meta);
         when(metaMapper.toDTO(meta)).thenReturn(new MetaResponseDTO());
 
@@ -86,6 +87,7 @@ class UpdateMetaAcompanhamentoCommandHandlerTest {
 
     @Test
     void shouldApplyMathSanitizationForTotalmenteCumprida() {
+        prepareScenario();
         dto.setStatus(StatusMeta.TOTALMENTE_CUMPRIDA);
         when(metaRepository.save(meta)).thenReturn(meta);
         when(metaMapper.toDTO(meta)).thenReturn(new MetaResponseDTO());
@@ -99,6 +101,7 @@ class UpdateMetaAcompanhamentoCommandHandlerTest {
 
     @Test
     void shouldRequireAuditoriaEvidenceForCompletedStatuses() {
+        prepareScenario();
         dto.setStatus(StatusMeta.NAO_CUMPRIDA);
         dto.setEvidenciasAuditoria("curta");
 

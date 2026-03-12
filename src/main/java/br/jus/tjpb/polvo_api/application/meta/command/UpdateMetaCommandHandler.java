@@ -1,10 +1,18 @@
 package br.jus.tjpb.polvo_api.application.meta.command;
 
-import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaResponseDTO;
-import br.jus.tjpb.polvo_api.boundaries.api.mapper.MetaMapper;
-import br.jus.tjpb.polvo_api.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaResponseDTO;
+import br.jus.tjpb.polvo_api.boundaries.api.mapper.MetaMapper;
+import br.jus.tjpb.polvo_api.domain.Coordenador;
+import br.jus.tjpb.polvo_api.domain.CoordenadorRepository;
+import br.jus.tjpb.polvo_api.domain.EixoTematico;
+import br.jus.tjpb.polvo_api.domain.EixoTematicoRepository;
+import br.jus.tjpb.polvo_api.domain.Meta;
+import br.jus.tjpb.polvo_api.domain.MetaRepository;
+import br.jus.tjpb.polvo_api.domain.Setor;
+import br.jus.tjpb.polvo_api.domain.SetorRepository;
 
 @Service
 public class UpdateMetaCommandHandler {
@@ -86,18 +94,11 @@ public class UpdateMetaCommandHandler {
         }
 
         switch (meta.getStatus()) {
-            case TOTALMENTE_CUMPRIDA:
-                meta.setPontosAtingidos(meta.getPMaximo());
-                break;
-            case NAO_CUMPRIDA:
-                meta.setPontosAtingidos(java.math.BigDecimal.ZERO);
-                break;
-            case PENDENTE:
-            case NAO_SE_APLICA:
-                meta.setPontosAtingidos(null);
-                break;
-            default:
-                break;
+            case TOTALMENTE_CUMPRIDA -> meta.setPontosAtingidos(meta.getPMaximo());
+            case NAO_CUMPRIDA -> meta.setPontosAtingidos(java.math.BigDecimal.ZERO);
+            case PENDENTE, NAO_SE_APLICA -> meta.setPontosAtingidos(null);
+            default -> {
+            }
         }
     }
 

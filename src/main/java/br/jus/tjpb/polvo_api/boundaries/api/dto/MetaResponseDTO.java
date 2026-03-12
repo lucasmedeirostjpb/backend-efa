@@ -7,6 +7,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -40,4 +41,5 @@ public class MetaResponseDTO {
     private BigDecimal estimativaReal;
     private BigDecimal tetoEstimado;
     private BigDecimal pontosAtingidos;
+    private List<String> delegadosEmails;
 }

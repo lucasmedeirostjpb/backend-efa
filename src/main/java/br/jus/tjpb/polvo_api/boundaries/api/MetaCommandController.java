@@ -75,7 +75,7 @@ public class MetaCommandController {
     }
 
     @PutMapping("/{id}/acompanhamento")
-    @PreAuthorize("hasRole('COORDENADOR') and @metaSecurity.isDonoDaMeta(#id, #jwt)")
+    @PreAuthorize("hasRole('DIGOV') or @metaSecurity.isDonoDaMeta(#id, #jwt)")
     public ResponseEntity<MetaResponseDTO> atualizarAcompanhamento(
             @PathVariable Long id,
             @Valid @RequestBody MetaAcompanhamentoRequestDTO dto,

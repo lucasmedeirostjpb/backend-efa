@@ -125,6 +125,7 @@ A entidade `Meta` é persistida em `efa_metas` e herda auditoria de criação e 
 | `EixoTematico` | `efa_eixos_tematicos` | Classificação temática da meta |
 | `Setor` | `efa_setores` | Unidade responsável ou vinculada |
 | `Coordenador` | `efa_coordenadores` | Responsável funcional pela meta |
+| `Delegacao` | `efa_delegacoes` | Delegados globais autorizados a editar o acompanhamento das metas do coordenador |
 
 ### Estados de meta
 
@@ -212,6 +213,9 @@ Na prática:
 | `DELETE` | `/api/metas/{id}` | `DIGOV` |
 | `GET` | `/api/kpis/dashboard` | `COORDENADOR` ou `DIGOV` |
 | `GET` | `/api/coordenadores` | Público |
+| `GET` | `/api/coordenadores/me/delegacoes` | Autenticado e associado a um coordenador |
+| `POST` | `/api/coordenadores/me/delegacoes` | Autenticado e associado a um coordenador |
+| `DELETE` | `/api/coordenadores/me/delegacoes/{id}` | Autenticado e associado a um coordenador |
 | `GET` | `/api/setores` | Público |
 | `POST` | `/api/setores` | `COORDENADOR` ou `DIGOV` |
 | `PUT` | `/api/setores/{id}` | `COORDENADOR` ou `DIGOV` |
@@ -226,7 +230,7 @@ No update de acompanhamento, o bean `metaSecurity` compara:
 - `meta.coordenador.loginKeycloak`
 - com o `preferred_username` presente no JWT.
 
-Assim, um usuário com role `COORDENADOR` só consegue alterar o acompanhamento da própria meta. A edição estrutural permanece exclusiva de `DIGOV`.
+Assim, um usuário autenticado consegue alterar o acompanhamento da meta quando for o coordenador dono ou quando o seu e-mail estiver cadastrado como delegado global do coordenador daquela meta. A edição estrutural permanece exclusiva de `DIGOV`.
 
 ### Auditoria de autoria
 
@@ -316,6 +320,7 @@ O arquivo mestre inclui as seguintes etapas:
 | `efa_eixos_tematicos` | Catálogo de eixos |
 | `efa_setores` | Catálogo de setores |
 | `efa_coordenadores` | Catálogo de coordenadores |
+| `efa_delegacoes` | Delegações globais por coordenador |
 | `jv_*` | Tabelas internas do JaVers, criadas pelo starter SQL |
 
 ## Contratos e endpoints
@@ -427,6 +432,9 @@ O cálculo de KPIs considera:
 | Método | Rota | Descrição |
 | --- | --- | --- |
 | `GET` | `/api/coordenadores` | Lista coordenadores por nome |
+| `GET` | `/api/coordenadores/me/delegacoes` | Lista delegados globais do coordenador autenticado |
+| `POST` | `/api/coordenadores/me/delegacoes` | Cadastra um delegado global por CPF |
+| `DELETE` | `/api/coordenadores/me/delegacoes/{id}` | Remove um delegado global do coordenador autenticado |
 | `GET` | `/api/setores` | Lista setores |
 | `POST` | `/api/setores` | Cria setor |
 | `PUT` | `/api/setores/{id}` | Atualiza setor |
@@ -483,6 +491,12 @@ O `UpdateMetaAcompanhamentoCommandHandler`:
 4. reaplica sanitização matemática;
 5. reaplica validação de auditoria;
 6. salva e devolve o DTO atualizado.
+
+O acesso a esse endpoint é permitido para:
+
+- `DIGOV`;
+- o coordenador dono da meta;
+- qualquer usuário autenticado cujo CPF esteja cadastrado em `efa_delegacoes` para o coordenador da meta.
 
 ### Exclusão de meta
 

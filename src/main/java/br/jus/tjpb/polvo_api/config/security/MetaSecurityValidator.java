@@ -25,15 +25,27 @@ public class MetaSecurityValidator {
         }
 
         String loginKeycloak = jwt.getClaimAsString("preferred_username");
-        if (loginKeycloak == null || loginKeycloak.isBlank()) {
-            return false;
-        }
+        String delegateEmail = jwt.getClaimAsString("email");
 
         return metaRepository.findById(metaId)
                 .map(Meta::getCoordenador)
-                .map(Coordenador::getLoginKeycloak)
-                .filter(login -> !login.isBlank())
-                .map(login -> Objects.equals(login, loginKeycloak))
+                .map(coordenador -> isOwnerOrDelegate(coordenador, loginKeycloak, delegateEmail))
                 .orElse(false);
+    }
+
+    private boolean isOwnerOrDelegate(Coordenador coordenador, String loginKeycloak, String delegateEmail) {
+        String ownerLogin = coordenador.getLoginKeycloak();
+        if (ownerLogin != null && !ownerLogin.isBlank() && Objects.equals(ownerLogin, loginKeycloak)) {
+            return true;
+        }
+
+        if (delegateEmail == null || delegateEmail.isBlank() || coordenador.getDelegacoes() == null) {
+            return false;
+        }
+
+        return coordenador.getDelegacoes().stream()
+                .map(br.jus.tjpb.polvo_api.domain.Delegacao::getDelegadoEmail)
+                .filter(email -> email != null && !email.isBlank())
+                .anyMatch(email -> Objects.equals(email, delegateEmail));
     }
 }

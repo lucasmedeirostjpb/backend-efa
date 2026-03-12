@@ -10,5 +10,7 @@
     <include file="db/changelog/changes/v1.2-prefixos-tabelas.sql"/>
     <include file="db/changelog/changes/v1.3-campos-auditoria.sql"/>
     <include file="db/changelog/changes/v1.4-coordenador.sql"/>
+    <include file="db/changelog/changes/v1.5-delegacoes.sql"/>
+    <include file="db/changelog/changes/v1.6-delegacoes-email.sql"/>
 
 </databaseChangeLog>

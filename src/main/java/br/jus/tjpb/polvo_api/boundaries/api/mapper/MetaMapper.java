@@ -2,10 +2,13 @@ package br.jus.tjpb.polvo_api.boundaries.api.mapper;
 
 import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaRequestDTO;
 import br.jus.tjpb.polvo_api.boundaries.api.dto.MetaResponseDTO;
+import br.jus.tjpb.polvo_api.domain.Coordenador;
 import br.jus.tjpb.polvo_api.domain.Meta;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.ReportingPolicy;
+
+import java.util.List;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE, imports = {
         br.jus.tjpb.polvo_api.domain.EixoTematico.class,
@@ -27,6 +30,7 @@ public interface MetaMapper {
     @Mapping(target = "coordenadorId", source = "coordenador.id")
     @Mapping(target = "coordenadorNome", source = "coordenador.nome")
     @Mapping(target = "coordenadorLoginKeycloak", source = "coordenador.loginKeycloak")
+    @Mapping(target = "delegadosEmails", expression = "java(extractDelegadosEmails(entity.getCoordenador()))")
     MetaResponseDTO toDTO(Meta entity);
 
     @Mapping(target = "eixo", ignore = true)
@@ -34,4 +38,15 @@ public interface MetaMapper {
     @Mapping(target = "coordenador", ignore = true)
     @Mapping(target = "id", ignore = true)
     void updateEntityFromDTO(MetaRequestDTO dto, @org.mapstruct.MappingTarget Meta entity);
+
+    default List<String> extractDelegadosEmails(Coordenador coordenador) {
+        if (coordenador == null || coordenador.getDelegacoes() == null) {
+            return List.of();
+        }
+
+        return coordenador.getDelegacoes().stream()
+                .map(br.jus.tjpb.polvo_api.domain.Delegacao::getDelegadoEmail)
+                .filter(email -> email != null && !email.isBlank())
+                .toList();
+    }
 }

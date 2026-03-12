@@ -46,7 +46,7 @@ class MetaCommandControllerAuthorizationTest {
         assertNotNull(preAuthorize);
         assertNotNull(putMapping);
         assertEquals(
-                "hasRole('COORDENADOR') and @metaSecurity.isDonoDaMeta(#id, #jwt)",
+            "hasRole('DIGOV') or @metaSecurity.isDonoDaMeta(#id, #jwt)",
                 preAuthorize.value());
         assertArrayEquals(new String[] { "/{id}/acompanhamento" }, putMapping.value());
     }
